@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Location Tracker</title>
+</head>
+<body>
+<h2>Tracking your location...</h2>
+
+<script>
+function sendLocation(lat, lon) {
+    fetch("", {
+        method: "POST",
+        headers: { "X-CSRFToken": "{{ csrf_token }}" },
+        body: new URLSearchParams({ lat: lat, lon: lon })
+    });
+}
+
+function track() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition((pos) => {
+            sendLocation(pos.coords.latitude, pos.coords.longitude);
+        });
+    } else {
+        alert("Location access not supported");
+    }
+}
+
+track();
+</script>
+</body>
+</html>

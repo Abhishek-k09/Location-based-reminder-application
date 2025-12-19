@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #4b79a1, #283e51);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            width: 350px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 30px;
+            border-radius: 18px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.2);
+            color: #fff;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .input-field {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .input-field input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            outline: none;
+            background: rgba(255,255,255,0.9);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #00dbde;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            color: #000;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: .3s;
+        }
+
+        button:hover {
+            background: #fc00ff;
+            color: #fff;
+        }
+
+        .link {
+            text-align: center;
+            margin-top: 18px;
+        }
+
+        .msg {
+            text-align: center;
+            color: yellow;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>User Login</h2>
+
+    {% if messages %}
+        {% for msg in messages %}
+            <p class="msg">{{ msg }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="input-field">
+            <input type="text" name="username" placeholder="Username" required>
+        </div>
+
+        <div class="input-field">
+            <input type="password" name="password" placeholder="Password" required>
+        </div>
+
+        <button type="submit">Login</button>
+    </form>
+
+    <div class="link">
+        New user? <a href="/register/" style="color:#fff; text-decoration:none;">Register</a>
+    </div>
+</div>
+
+</body>
+</html>

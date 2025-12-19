@@ -1,0 +1,189 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Location Reminder Dashboard</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #4e54c8, #8f94fb);
+            font-family: Arial, sans-serif;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            width: 100%;
+            padding: 12px 25px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logout-btn {
+            background: #ff7070;
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .container {
+            width: 520px;
+            margin: 40px auto;
+            background: rgba(255,255,255,0.15);
+            padding: 30px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        label { display: block; margin-top: 8px; }
+        input { width: 100%; padding: 10px; border-radius: 8px; border: none; margin-bottom: 10px; }
+        button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #00c9ff; color: #000; cursor: pointer; margin-bottom: 8px; }
+        #map { height: 250px; border-radius: 10px; border: 2px solid white; margin-bottom: 12px; }
+
+        .reminder-box { background: rgba(255,255,255,0.12); padding: 10px; margin: 8px 0; border-radius: 10px; }
+        .rem-row { display: flex; justify-content: space-between; align-items: center; }
+        .action-btns a { margin-left: 10px; text-decoration: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; }
+        .edit-btn { background: #ffd166; color: #000; }
+        .delete-btn { background: #ff6b6b; color: #fff; }
+        #status { text-align:center; color:yellow; margin-top:8px; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <h3>Location Reminder</h3>
+    <a class="logout-btn" href="{% url 'logout' %}">Logout</a>
+</div>
+
+<div class="container">
+    <h2>Create Reminder</h2>
+    <form action="{% url 'save_reminder' %}" method="POST">
+        {% csrf_token %}
+        <label>Title</label>
+        <input type="text" name="title" required>
+
+        <label>Email</label>
+        <input type="email" name="email" required>
+
+        <label>Pick Location</label>
+        <div id="map"></div>python
+
+        <label>Latitude</label>
+        <input id="lat" name="lat" required>
+
+        <label>Longitude</label>
+        <input id="lon" name="lon" required>
+
+        <label>Radius (meters)</label>
+        <input id="radius" name="radius" type="number" value="500">
+
+        <button type="submit">Save Reminder</button>
+    </form>
+
+    <hr>
+
+    <h3>Your Reminders</h3>
+    {% if reminders %}
+        {% for r in reminders %}
+            <div class="reminder-box">
+                <div class="rem-row">
+                    <div>
+                        <strong>{{ r.title }}</strong><br>
+                        Lat: {{ r.target_lat }} | Lon: {{ r.target_lon }} | Radius: {{ r.radius }}m
+                    </div>
+                    <div class="action-btns">
+                        <a class="edit-btn" href="{% url 'edit_reminder' r.id %}">Edit</a>
+                        <a class="delete-btn" href="{% url 'delete_reminder' r.id %}">Delete</a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No reminders saved.</p>
+    {% endif %}
+
+    <hr>
+    <p style="text-align:center;">Keep this page open on your phone. Emails will be sent automatically when you approach a reminder location.</p>
+    <p id="status"></p>
+</div>
+
+<audio id="alertSound" src="{% static 'alert.mp3' %}"></audio>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+<script>
+/* ---------- Map & picker ---------- */
+var map = L.map('map').setView([18.5204,73.8567], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+L.Control.geocoder().addTo(map);
+
+var marker, circle;
+map.on('click', function(e){
+    var lat=e.latlng.lat.toFixed(6), lon=e.latlng.lng.toFixed(6);
+    document.getElementById('lat').value = lat;
+    document.getElementById('lon').value = lon;
+    if(marker) marker.remove();
+    marker = L.marker([lat,lon]).addTo(map);
+    var r = parseInt(document.getElementById('radius').value||500);
+    if(circle) circle.remove();
+    circle = L.circle([lat,lon],{radius:r,color:'yellow',fillColor:'#fffa',fillOpacity:0.3}).addTo(map);
+});
+document.getElementById('radius').addEventListener('input', function(){
+    let lat=document.getElementById('lat').value, lon=document.getElementById('lon').value;
+    if(lat && lon){
+        if(circle) circle.remove();
+        let r=parseInt(document.getElementById('radius').value||500);
+        circle=L.circle([lat,lon],{radius:r,color:'yellow',fillColor:'#fffa',fillOpacity:0.3}).addTo(map);
+    }
+});
+map.locate({setView:true,maxZoom:14});
+map.on('locationfound', function(e){
+    L.circleMarker(e.latlng,{radius:6,color:'cyan'}).addTo(map).bindPopup('You are here');
+});
+
+/* ---------- CSRF ---------- */
+function getCookie(name){let cookieValue=null;if(document.cookie&&document.cookie!==''){const cookies=document.cookie.split(';');for(let c of cookies){c=c.trim();if(c.startsWith(name+'=')){cookieValue=decodeURIComponent(c.substring(name.length+1));break;}}}return cookieValue;}
+const csrftoken=getCookie('csrftoken');
+
+/* ---------- Auto tracking & email trigger ---------- */
+let watchId=null, alertSound=document.getElementById('alertSound'), statusP=document.getElementById('status');
+window.addEventListener('load', function(){
+    if(!navigator.geolocation){ alert('Geolocation not supported'); return; }
+    if(Notification && Notification.permission !== "granted"){ Notification.requestPermission(); }
+    watchId=navigator.geolocation.watchPosition(success,error,{enableHighAccuracy:true,maximumAge:2000,timeout:10000});
+});
+
+function success(pos){
+    const lat=pos.coords.latitude, lon=pos.coords.longitude;
+    if(marker) marker.remove();
+    marker=L.marker([lat,lon]).addTo(map).bindPopup("You (live)").openPopup();
+    map.setView([lat,lon],14);
+
+    fetch("{% url 'check_location' %}", {
+        method:'POST',
+        headers:{'X-CSRFToken':csrftoken,'Content-Type':'application/x-www-form-urlencoded'},
+        body:`lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`
+    }).then(r=>r.json()).then(data=>{
+        if(data.triggered){
+            statusP.innerText=data.message||'Reminder triggered';
+            try{ alertSound.play(); }catch(e){console.warn(e);}
+            if(navigator.vibrate) navigator.vibrate([200,100,200]);
+            if(Notification && Notification.permission==="granted"){ new Notification("Location Reminder",{body:data.message||'You reached a reminder location', silent:false}); }
+        } else { statusP.innerText=data.message||'No reminder triggered'; }
+    }).catch(err=>{console.error(err); statusP.innerText='Error checking location'; });
+}
+
+function error(err){ statusP.innerText='Location error: '+(err.message||err.code); }
+</script>
+</body>
+</html>

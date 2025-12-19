@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Reminder</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg,#4e54c8,#8f94fb);
+            font-family: Arial, sans-serif;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 520px;
+            max-width: 95%;
+            margin: 50px auto;
+            background: rgba(255,255,255,0.15);
+            padding: 30px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 14px;
+            display: block;
+            margin-top: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #00c9ff;
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        #map {
+            height: 250px;
+            border-radius: 10px;
+            border: 2px solid white;
+            margin-bottom: 12px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #fff;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Edit Reminder</h2>
+
+    <form method="POST" action="{% url 'edit_reminder' reminder.id %}">
+        {% csrf_token %}
+        <label>Title</label>
+        <input type="text" name="title" value="{{ reminder.title }}" required>
+
+        <label>Email</label>
+        <input type="email" name="email" value="{{ reminder.email }}" required>
+
+        <label>Pick Location</label>
+        <div id="map"></div>
+
+        <label>Latitude</label>
+        <input type="text" name="lat" id="lat" value="{{ reminder.target_lat }}" required>
+
+        <label>Longitude</label>
+        <input type="text" name="lon" id="lon" value="{{ reminder.target_lon }}" required>
+
+        <label>Radius (meters)</label>
+        <input type="number" name="radius" id="radius" value="{{ reminder.radius }}" required>
+
+        <button type="submit">Save Reminder</button>
+    </form>
+
+    <a class="back-link" href="{% url 'home' %}">&larr; Back to Dashboard</a>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+<script>
+    var lat = parseFloat("{{ reminder.target_lat|default:'18.5204' }}");
+var lon = parseFloat("{{ reminder.target_lon|default:'73.8567' }}");
+var radius = parseInt("{{ reminder.radius|default:'500' }}");
+
+
+    // Initialize map
+    var map = L.map('map').setView([lat, lon], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom: 19 }).addTo(map);
+    L.Control.geocoder().addTo(map);
+
+    var marker = L.marker([lat, lon]).addTo(map);
+    var circle = L.circle([lat, lon], {
+        radius: radius,
+        color: 'yellow',
+        fillColor: '#fffa',
+        fillOpacity: 0.3
+    }).addTo(map);
+
+    // Update marker & circle on map click
+    map.on('click', function(e){
+        lat = e.latlng.lat.toFixed(6);
+        lon = e.latlng.lng.toFixed(6);
+        document.getElementById('lat').value = lat;
+        document.getElementById('lon').value = lon;
+
+        if(marker) marker.remove();
+        marker = L.marker([lat, lon]).addTo(map);
+
+        if(circle) circle.remove();
+        var r = parseInt(document.getElementById('radius').value || 500);
+        circle = L.circle([lat, lon], { radius: r, color:'yellow', fillColor:'#fffa', fillOpacity:0.3 }).addTo(map);
+    });
+
+    // Update circle when radius changes
+    document.getElementById('radius').addEventListener('input', function(){
+        var r = parseInt(this.value || 500);
+        if(circle) circle.remove();
+        circle = L.circle([lat, lon], { radius: r, color:'yellow', fillColor:'#fffa', fillOpacity:0.3 }).addTo(map);
+    });
+</script>
+
+</body>
+</html>
